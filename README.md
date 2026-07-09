@@ -1,5 +1,11 @@
 # Duplicate File Checker / 重复文件清理器
 
+## Mac 直接下载 / Direct Mac Download
+
+**Mac 上直接使用：点击 [GitHub Releases](https://github.com/cuishuang/Duplicate-File-Checker/releases/tag/v1.0.0) 下载最新 `.dmg`。**
+
+**Use directly on macOS: click [GitHub Releases](https://github.com/cuishuang/Duplicate-File-Checker/releases/tag/v1.0.0) to download the latest `.dmg`.**
+
 一个用 Rust 编写的本地重复文件查找器，提供原生图形界面和命令行模式。它适合清理视频、图片、备份盘和外接硬盘中的重复文件，文件索引会保存在本地 SQLite 数据库中。
 
 A local duplicate file checker written in Rust, with a native desktop GUI and a CLI mode. It is designed for cleaning duplicate videos, photos, backup folders, and external drives. File indexes are stored locally in SQLite.
