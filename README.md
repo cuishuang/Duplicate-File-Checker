@@ -2,9 +2,9 @@
 
 
 
-**如果你有很多块移动硬盘，或者有多台电脑，如何简单定位到这些不同存储中可能存在的大量相同文件？并将它们删除，以节省空间？和单机使用的类似软件相比，该工具的特色是可以跨设备/跨磁盘保存这些文件信息，并根据文件大小/Hash 进行对比。**
+<font color="orange">**如果你有很多块移动硬盘，或者有多台电脑，如何简单定位到这些不同存储中可能存在的大量相同文件？并将它们删除，以节省空间？和单机使用的类似软件相比，该工具的特色是可以跨设备/跨磁盘保存这些文件信息，并根据文件大小/Hash 进行对比。**</font>
 
-**If you have many external drives or multiple computers, how do you quickly find large numbers of duplicate files across different storage devices and remove them to save space? Compared with similar single-machine tools, this app can persist file indexes across devices and disks, then compare them by file size or hash.**
+<font color="orange">**If you have many external drives or multiple computers, how do you quickly find large numbers of duplicate files across different storage devices and remove them to save space? Compared with similar single-machine tools, this app can persist file indexes across devices and disks, then compare them by file size or hash.**</font>
 
 
 
@@ -45,7 +45,23 @@ A local duplicate file checker written in Rust, with a native desktop GUI and a 
 
 This is a native desktop app. Run `cargo run -- --gui` to view the latest interface.
 
-## 安装 / Installation
+
+![首页](assets/1.png)
+
+![first-page](assets/2.png)
+
+
+![深色模式](assets/3.png)
+
+![设置选项](assets/4.png)
+
+
+<br>
+<br>
+
+
+
+## 通过源代码来安装使用 / Installation by source code
 
 要求 / Requirements:
 
