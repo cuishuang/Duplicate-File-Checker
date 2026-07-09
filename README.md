@@ -6,6 +6,10 @@
 
 **Use directly on macOS: click [GitHub Releases](https://github.com/cuishuang/Duplicate-File-Checker/releases/tag/v1.0.0) to download the latest `.dmg`.**
 
+**如果你有很多块移动硬盘，或者有多台电脑，如何简单定位到这些不同存储中可能存在的大量相同文件？并将它们删除，以节省空间？和单机使用的类似软件相比，该工具的特色是可以跨设备/跨磁盘保存这些文件信息，并根据文件大小/Hash 进行对比。**
+
+**If you have many external drives or multiple computers, how do you quickly find large numbers of duplicate files across different storage devices and remove them to save space? Compared with similar single-machine tools, this app can persist file indexes across devices and disks, then compare them by file size or hash.**
+
 一个用 Rust 编写的本地重复文件查找器，提供原生图形界面和命令行模式。它适合清理视频、图片、备份盘和外接硬盘中的重复文件，文件索引会保存在本地 SQLite 数据库中。
 
 A local duplicate file checker written in Rust, with a native desktop GUI and a CLI mode. It is designed for cleaning duplicate videos, photos, backup folders, and external drives. File indexes are stored locally in SQLite.
