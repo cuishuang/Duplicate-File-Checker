@@ -1,0 +1,36 @@
+target/
+
+# Local runtime artifacts
+disk_files.db
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+duplicate_files_report.txt
+reports/
+demo_files/
+docs/superpowers/
+src/*.with-*
+
+# Packaged app artifacts
+*.app/
+*.dmg
+*.pkg
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Rust tooling output
+*.profraw
+
+# Logs/temp files
+*.log
+*.tmp
+*.temp

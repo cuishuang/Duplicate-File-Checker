@@ -1,0 +1,27 @@
+[package]
+name = "find-dupl-file"
+version = "0.1.0"
+edition = "2024"
+authors = ["find-dupl-file contributors"]
+description = "A native Rust desktop and CLI duplicate file finder."
+license = "MIT"
+readme = "README.md"
+keywords = ["duplicate-files", "egui", "sqlite", "desktop", "cleanup"]
+categories = ["filesystem", "gui"]
+
+[dependencies]
+chrono = "0.4.40"
+rusqlite = "0.34.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10.8"
+walkdir = "2.5.0"
+eframe = "0.28.1"
+egui = "0.28.1"
+rfd = "0.14.1"
+dirs = "5.0"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+trash = "5.2"
+
+[dev-dependencies]
+tempfile = "3.10"
