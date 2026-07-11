@@ -56,6 +56,9 @@ const DARK: Palette = Palette {
     red: egui::Color32::from_rgb(248, 113, 113),
 };
 
+const SIDEBAR_WIDTH: f32 = 348.0;
+const BODY_SEPARATOR_WIDTH: f32 = 1.0;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum AppTheme {
     Light,
@@ -228,6 +231,18 @@ impl DuplicateFinderApp {
         style.visuals.menu_rounding = egui::Rounding::same(10.0);
         style.spacing.button_padding = egui::vec2(14.0, 7.0);
         style.spacing.item_spacing = egui::vec2(8.0, 8.0);
+        style.text_styles.insert(
+            egui::TextStyle::Body,
+            egui::FontId::new(13.5, egui::FontFamily::Proportional),
+        );
+        style.text_styles.insert(
+            egui::TextStyle::Button,
+            egui::FontId::new(13.0, egui::FontFamily::Proportional),
+        );
+        style.text_styles.insert(
+            egui::TextStyle::Small,
+            egui::FontId::new(11.5, egui::FontFamily::Proportional),
+        );
         ctx.set_style(style);
     }
 
@@ -457,49 +472,63 @@ impl DuplicateFinderApp {
         egui::CentralPanel::default()
             .frame(egui::Frame::none().fill(p.bg))
             .show(ctx, |ui| {
-                let rect = ui.max_rect();
-                let sidebar_width = 348.0;
-                let separator_width = 1.0;
-                let sidebar_rect = egui::Rect::from_min_max(
-                    rect.min,
-                    egui::pos2(rect.min.x + sidebar_width, rect.max.y),
-                );
-                let separator_rect = egui::Rect::from_min_max(
-                    egui::pos2(sidebar_rect.max.x, rect.min.y),
-                    egui::pos2(sidebar_rect.max.x + separator_width, rect.max.y),
-                );
-                let content_rect = egui::Rect::from_min_max(
-                    egui::pos2(separator_rect.max.x, rect.min.y),
-                    rect.max,
-                );
+                let body_size = ui.available_size();
+                ui.spacing_mut().item_spacing = egui::vec2(0.0, 0.0);
 
-                ui.painter().rect_filled(sidebar_rect, 0.0, p.sidebar_bg);
-                ui.painter().rect_filled(separator_rect, 0.0, p.border);
-                ui.painter().rect_filled(content_rect, 0.0, p.bg);
+                ui.horizontal(|ui| {
+                    ui.push_id("sidebar_region", |ui| {
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(SIDEBAR_WIDTH, body_size.y),
+                            egui::Layout::top_down(egui::Align::Min),
+                            |ui| {
+                                egui::Frame::none()
+                                    .fill(p.sidebar_bg)
+                                    .inner_margin(egui::Margin::same(18.0))
+                                    .show(ui, |ui| {
+                                        ui.set_min_size(egui::vec2(
+                                            SIDEBAR_WIDTH - 36.0,
+                                            (body_size.y - 36.0).max(0.0),
+                                        ));
+                                        self.show_sidebar(ui, p);
+                                    });
+                            },
+                        );
+                    });
 
-                ui.allocate_ui_at_rect(sidebar_rect, |ui| {
-                    egui::Frame::none()
-                        .fill(p.sidebar_bg)
-                        .inner_margin(egui::Margin::same(18.0))
-                        .show(ui, |ui| {
-                            self.show_sidebar(ui, p);
-                        });
-                });
+                    let (separator_rect, _) = ui.allocate_exact_size(
+                        egui::vec2(BODY_SEPARATOR_WIDTH, body_size.y),
+                        egui::Sense::hover(),
+                    );
+                    ui.painter().rect_filled(separator_rect, 0.0, p.border);
 
-                ui.allocate_ui_at_rect(content_rect, |ui| {
-                    egui::Frame::none()
-                        .fill(p.bg)
-                        .inner_margin(egui::Margin::same(24.0))
-                        .show(ui, |ui| {
-                            self.show_results(ui, p);
-                        });
+                    let content_width = ui.available_width();
+                    ui.push_id("content_region", |ui| {
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(content_width, body_size.y),
+                            egui::Layout::top_down(egui::Align::Min),
+                            |ui| {
+                                egui::Frame::none()
+                                    .fill(p.bg)
+                                    .inner_margin(egui::Margin::same(24.0))
+                                    .show(ui, |ui| {
+                                        ui.set_min_size(egui::vec2(
+                                            (content_width - 48.0).max(0.0),
+                                            (body_size.y - 48.0).max(0.0),
+                                        ));
+                                        self.show_results(ui, p);
+                                    });
+                            },
+                        );
+                    });
                 });
             });
     }
 
     fn show_sidebar(&mut self, ui: &mut egui::Ui, p: Palette) {
         let language = self.language();
+        ui.spacing_mut().item_spacing = egui::vec2(8.0, 8.0);
         egui::ScrollArea::vertical()
+            .id_source("sidebar_scroll")
             .auto_shrink([false, false])
             .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
             .show(ui, |ui| {
@@ -517,20 +546,30 @@ impl DuplicateFinderApp {
                 ui.add_space(16.0);
 
                 ui.label(
-                    egui::RichText::new(tr(language, "扫描目录", "Scan folder")).color(p.muted),
+                    egui::RichText::new(tr(language, "扫描目录", "Scan folder"))
+                        .color(p.muted)
+                        .strong()
+                        .size(12.0),
                 );
+                ui.add_space(3.0);
                 ui.horizontal(|ui| {
+                    let browse_width = 64.0;
+                    let path_width = (ui.available_width() - browse_width - 8.0).max(120.0);
                     ui.add_sized(
-                        [226.0, 32.0],
-                        egui::TextEdit::singleline(&mut self.scan_path).hint_text(tr(
-                            language,
-                            "选择要扫描的文件夹",
-                            "Choose a folder to scan",
-                        )),
+                        [path_width, 34.0],
+                        egui::TextEdit::singleline(&mut self.scan_path)
+                            .font(egui::FontId::proportional(13.0))
+                            .vertical_align(egui::Align::Center)
+                            .margin(egui::Margin::symmetric(9.0, 4.0))
+                            .hint_text(tr(
+                                language,
+                                "选择要扫描的文件夹",
+                                "Choose a folder to scan",
+                            )),
                     );
                     if ui
                         .add_sized(
-                            [60.0, 32.0],
+                            [browse_width, 34.0],
                             secondary_button(tr(language, "浏览", "Browse"), p),
                         )
                         .clicked()
@@ -542,22 +581,37 @@ impl DuplicateFinderApp {
                     }
                 });
 
-                ui.horizontal_wrapped(|ui| {
-                    ui.label(egui::RichText::new(tr(language, "快捷：", "Quick:")).color(p.muted));
+                ui.add_space(2.0);
+                ui.horizontal(|ui| {
+                    ui.label(
+                        egui::RichText::new(tr(language, "快捷", "Quick"))
+                            .color(p.muted)
+                            .size(11.5),
+                    );
                     self.quick_path_button(ui, tr(language, "桌面", "Desktop"), "Desktop", p);
                     self.quick_path_button(ui, tr(language, "下载", "Downloads"), "Downloads", p);
                     self.quick_path_button(ui, tr(language, "文档", "Documents"), "Documents", p);
                 });
 
-                ui.add_space(12.0);
-                ui.label(egui::RichText::new(tr(language, "硬盘标识", "Disk ID")).color(p.muted));
+                ui.add_space(14.0);
+                ui.label(
+                    egui::RichText::new(tr(language, "硬盘标识", "Disk ID"))
+                        .color(p.muted)
+                        .strong()
+                        .size(12.0),
+                );
+                ui.add_space(3.0);
                 ui.add_sized(
-                    [ui.available_width(), 32.0],
-                    egui::TextEdit::singleline(&mut self.disk_id).hint_text(tr(
-                        language,
-                        "例如 main、backup、usb-1",
-                        "e.g. main, backup, usb-1",
-                    )),
+                    [ui.available_width(), 34.0],
+                    egui::TextEdit::singleline(&mut self.disk_id)
+                        .font(egui::FontId::proportional(13.0))
+                        .vertical_align(egui::Align::Center)
+                        .margin(egui::Margin::symmetric(9.0, 4.0))
+                        .hint_text(tr(
+                            language,
+                            "例如 Downloads、backup、usb-1",
+                            "e.g. Downloads, backup, usb-1",
+                        )),
                 );
 
                 ui.add_space(16.0);
@@ -626,6 +680,7 @@ impl DuplicateFinderApp {
 
     fn show_results(&mut self, ui: &mut egui::Ui, p: Palette) {
         let language = self.language();
+        ui.spacing_mut().item_spacing = egui::vec2(8.0, 8.0);
         if self.selected_disk_id.is_some() {
             self.show_disk_files(ui, p);
             return;
@@ -710,8 +765,11 @@ impl DuplicateFinderApp {
         let mut files_to_reveal = Vec::new();
         let mut ignored_groups = Vec::new();
 
+        let results_height = ui.available_height();
         egui::ScrollArea::vertical()
+            .id_source("duplicate_results_scroll")
             .auto_shrink([false, false])
+            .max_height(results_height)
             .show(ui, |ui| {
                 for (group_index, group) in groups.iter().enumerate() {
                     self.result_group(
@@ -750,72 +808,79 @@ impl DuplicateFinderApp {
                 .default_width(560.0)
                 .resizable(true)
                 .show(ctx, |ui| {
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        ui.label(
-                            egui::RichText::new(tr(language, "文件过滤", "File Filters")).strong(),
-                        );
-                        ui.add_space(8.0);
+                    egui::ScrollArea::vertical()
+                        .id_source("settings_scroll")
+                        .show(ui, |ui| {
+                            ui.label(
+                                egui::RichText::new(tr(language, "文件过滤", "File Filters"))
+                                    .strong(),
+                            );
+                            ui.add_space(8.0);
 
-                        let mut size_mb = self.config.min_file_size as f64 / (1024.0 * 1024.0);
-                        let mut config_changed = false;
-                        ui.horizontal(|ui| {
-                            ui.label(tr(language, "最小文件大小（MB）", "Minimum file size (MB)"));
+                            let mut size_mb = self.config.min_file_size as f64 / (1024.0 * 1024.0);
+                            let mut config_changed = false;
+                            ui.horizontal(|ui| {
+                                ui.label(tr(
+                                    language,
+                                    "最小文件大小（MB）",
+                                    "Minimum file size (MB)",
+                                ));
+                                if ui
+                                    .add(
+                                        egui::DragValue::new(&mut size_mb)
+                                            .range(0.0..=102400.0)
+                                            .speed(1.0),
+                                    )
+                                    .changed()
+                                {
+                                    self.config.min_file_size = (size_mb * 1024.0 * 1024.0) as u64;
+                                    config_changed = true;
+                                }
+                            });
+
+                            ui.add_space(12.0);
+                            config_changed |= tag_editor(
+                                ui,
+                                tr(language, "处理的扩展名", "Included extensions"),
+                                &mut self.new_extension,
+                                &mut self.config.file_extensions,
+                                language,
+                                p,
+                            );
+                            ui.add_space(12.0);
+                            config_changed |= tag_editor(
+                                ui,
+                                tr(language, "忽略的扩展名", "Ignored extensions"),
+                                &mut self.new_ignore_extension,
+                                &mut self.config.ignore_extensions,
+                                language,
+                                p,
+                            );
+                            ui.add_space(12.0);
+                            config_changed |= tag_editor(
+                                ui,
+                                tr(language, "忽略的目录", "Ignored folders"),
+                                &mut self.new_ignore_dir,
+                                &mut self.config.ignore_dirs,
+                                language,
+                                p,
+                            );
+
+                            ui.add_space(12.0);
                             if ui
-                                .add(
-                                    egui::DragValue::new(&mut size_mb)
-                                        .range(0.0..=102400.0)
-                                        .speed(1.0),
+                                .checkbox(
+                                    &mut self.config.use_hash,
+                                    tr(
+                                        language,
+                                        "默认使用采样哈希比较",
+                                        "Use sample hash by default",
+                                    ),
                                 )
                                 .changed()
                             {
-                                self.config.min_file_size = (size_mb * 1024.0 * 1024.0) as u64;
                                 config_changed = true;
                             }
-                        });
-
-                        ui.add_space(12.0);
-                        config_changed |= tag_editor(
-                            ui,
-                            tr(language, "处理的扩展名", "Included extensions"),
-                            &mut self.new_extension,
-                            &mut self.config.file_extensions,
-                            language,
-                            p,
-                        );
-                        ui.add_space(12.0);
-                        config_changed |= tag_editor(
-                            ui,
-                            tr(language, "忽略的扩展名", "Ignored extensions"),
-                            &mut self.new_ignore_extension,
-                            &mut self.config.ignore_extensions,
-                            language,
-                            p,
-                        );
-                        ui.add_space(12.0);
-                        config_changed |= tag_editor(
-                            ui,
-                            tr(language, "忽略的目录", "Ignored folders"),
-                            &mut self.new_ignore_dir,
-                            &mut self.config.ignore_dirs,
-                            language,
-                            p,
-                        );
-
-                        ui.add_space(12.0);
-                        if ui
-                            .checkbox(
-                                &mut self.config.use_hash,
-                                tr(
-                                    language,
-                                    "默认使用采样哈希比较",
-                                    "Use sample hash by default",
-                                ),
-                            )
-                            .changed()
-                        {
-                            config_changed = true;
-                        }
-                        ui.label(
+                            ui.label(
                             egui::RichText::new(tr(
                                 language,
                                 "哈希模式更准确，但扫描大文件时会产生更多 I/O。",
@@ -825,48 +890,49 @@ impl DuplicateFinderApp {
                             .color(p.muted),
                         );
 
-                        ui.add_space(16.0);
-                        ui.label(
-                            egui::RichText::new(tr(language, "删除方式", "Delete Mode")).strong(),
-                        );
-                        let mut delete_mode = self.delete_mode;
-                        let changed = ui
-                            .radio_value(
-                                &mut delete_mode,
-                                DeleteMode::MoveToTrash,
-                                tr(
+                            ui.add_space(16.0);
+                            ui.label(
+                                egui::RichText::new(tr(language, "删除方式", "Delete Mode"))
+                                    .strong(),
+                            );
+                            let mut delete_mode = self.delete_mode;
+                            let changed = ui
+                                .radio_value(
+                                    &mut delete_mode,
+                                    DeleteMode::MoveToTrash,
+                                    tr(
+                                        language,
+                                        "移到废纸篓（推荐）",
+                                        "Move to Trash (recommended)",
+                                    ),
+                                )
+                                .changed()
+                                | ui.radio_value(
+                                    &mut delete_mode,
+                                    DeleteMode::DirectRemove,
+                                    tr(
+                                        language,
+                                        "直接删除（不可恢复）",
+                                        "Remove directly (irreversible)",
+                                    ),
+                                )
+                                .changed();
+                            ui.label(
+                                egui::RichText::new(tr(
                                     language,
-                                    "移到废纸篓（推荐）",
-                                    "Move to Trash (recommended)",
-                                ),
-                            )
-                            .changed()
-                            | ui.radio_value(
-                                &mut delete_mode,
-                                DeleteMode::DirectRemove,
-                                tr(
-                                    language,
-                                    "直接删除（不可恢复）",
-                                    "Remove directly (irreversible)",
-                                ),
-                            )
-                            .changed();
-                        ui.label(
-                            egui::RichText::new(tr(
-                                language,
-                                "默认移到废纸篓，确认无误后可再清空废纸篓。",
-                                "Default is Trash; empty it later after checking.",
-                            ))
-                            .size(12.0)
-                            .color(p.muted),
-                        );
-                        if changed {
-                            self.save_delete_mode(delete_mode);
-                        }
-                        if config_changed {
-                            self.save_app_config();
-                        }
-                    });
+                                    "默认移到废纸篓，确认无误后可再清空废纸篓。",
+                                    "Default is Trash; empty it later after checking.",
+                                ))
+                                .size(12.0)
+                                .color(p.muted),
+                            );
+                            if changed {
+                                self.save_delete_mode(delete_mode);
+                            }
+                            if config_changed {
+                                self.save_app_config();
+                            }
+                        });
                 });
         }
         self.show_config = open;
@@ -1109,54 +1175,59 @@ impl DuplicateFinderApp {
 
                 let files = self.selected_disk_files.clone();
                 let mut files_to_reveal = Vec::new();
+                let files_height = ui.available_height();
                 egui::ScrollArea::vertical()
+                    .id_source("disk_files_scroll")
                     .auto_shrink([false, false])
+                    .max_height(files_height)
                     .show(ui, |ui| {
                         for file in files {
-                            ui.horizontal(|ui| {
-                                ui.add_sized(
-                                    [86.0, 24.0],
-                                    egui::Label::new(
-                                        egui::RichText::new(format_bytes(file.size))
-                                            .color(p.blue)
-                                            .size(12.0),
-                                    ),
-                                );
+                            ui.push_id(("disk_file", file_key(&file)), |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.add_sized(
+                                        [86.0, 24.0],
+                                        egui::Label::new(
+                                            egui::RichText::new(format_bytes(file.size))
+                                                .color(p.blue)
+                                                .size(12.0),
+                                        ),
+                                    );
 
-                                let path_width = (ui.available_width() - 62.0).max(0.0);
-                                ui.add_sized(
-                                    [path_width, 24.0],
-                                    egui::Label::new(
-                                        egui::RichText::new(shorten_path(&file.path, 112))
-                                            .color(p.text)
-                                            .size(12.0),
+                                    let path_width = (ui.available_width() - 62.0).max(0.0);
+                                    ui.add_sized(
+                                        [path_width, 24.0],
+                                        egui::Label::new(
+                                            egui::RichText::new(shorten_path(&file.path, 112))
+                                                .color(p.text)
+                                                .size(12.0),
+                                        )
+                                        .truncate()
+                                        .sense(egui::Sense::hover()),
                                     )
-                                    .truncate()
-                                    .sense(egui::Sense::hover()),
-                                )
-                                .on_hover_text(format!(
-                                    "{}: {}\n{}: {}\n{}: {}",
-                                    tr(language, "磁盘", "Disk"),
-                                    file.disk_id,
-                                    tr(language, "路径", "Path"),
-                                    file.path,
-                                    tr(language, "哈希", "Hash"),
-                                    file.sample_hash.as_deref().unwrap_or(tr(
-                                        language,
-                                        "未记录",
-                                        "Not recorded"
-                                    ))
-                                ));
+                                    .on_hover_text(format!(
+                                        "{}: {}\n{}: {}\n{}: {}",
+                                        tr(language, "磁盘", "Disk"),
+                                        file.disk_id,
+                                        tr(language, "路径", "Path"),
+                                        file.path,
+                                        tr(language, "哈希", "Hash"),
+                                        file.sample_hash.as_deref().unwrap_or(tr(
+                                            language,
+                                            "未记录",
+                                            "Not recorded"
+                                        ))
+                                    ));
 
-                                if ui
-                                    .add_sized(
-                                        [62.0, 24.0],
-                                        secondary_button(tr(language, "定位", "Reveal"), p),
-                                    )
-                                    .clicked()
-                                {
-                                    files_to_reveal.push(file.path.clone());
-                                }
+                                    if ui
+                                        .add_sized(
+                                            [62.0, 24.0],
+                                            secondary_button(tr(language, "定位", "Reveal"), p),
+                                        )
+                                        .clicked()
+                                    {
+                                        files_to_reveal.push(file.path.clone());
+                                    }
+                                });
                             });
                             ui.add_space(3.0);
                         }
@@ -1179,128 +1250,132 @@ impl DuplicateFinderApp {
         p: Palette,
     ) {
         let language = self.language();
-        egui::Frame::none()
-            .fill(p.surface)
-            .stroke(egui::Stroke::new(1.0, p.border))
-            .rounding(egui::Rounding::same(8.0))
-            .inner_margin(egui::Margin::same(16.0))
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(
-                        egui::RichText::new(tr_format(
-                            language,
-                            format!("重复组 {}", group_index + 1),
-                            format!("Group {}", group_index + 1),
-                        ))
-                        .strong()
-                        .color(p.text),
-                    );
-                    ui.separator();
-                    ui.label(egui::RichText::new(format_bytes(group.size)).color(p.blue));
-                    ui.label(
-                        egui::RichText::new(format_count(
-                            group.files.len(),
-                            language,
-                            "个文件",
-                            "files",
-                        ))
-                        .color(p.muted),
-                    );
-                    ui.label(
-                        egui::RichText::new(tr_format(
-                            language,
-                            format!(
-                                "可释放 {}",
-                                format_bytes(group.size * (group.files.len() - 1) as u64)
-                            ),
-                            format!(
-                                "Save {}",
-                                format_bytes(group.size * (group.files.len() - 1) as u64)
-                            ),
-                        ))
-                        .color(p.green),
-                    );
-
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui
-                            .add_sized(
-                                [96.0, 26.0],
-                                secondary_button(tr(language, "本次忽略", "Ignore"), p),
-                            )
-                            .on_hover_text(tr(
-                                language,
-                                "本轮隐藏该重复组，不参与选择和删除",
-                                "Hide this group for this run; it will not be selected or deleted",
-                            ))
-                            .clicked()
-                        {
-                            ignored_groups.push(group_key(group));
-                        }
-                    });
-                });
-
-                ui.add_space(8.0);
-
-                for (file_index, file_path) in group.files.iter().enumerate() {
+        ui.push_id(("duplicate_group", group_key(group)), |ui| {
+            egui::Frame::none()
+                .fill(p.surface)
+                .stroke(egui::Stroke::new(1.0, p.border))
+                .rounding(egui::Rounding::same(8.0))
+                .inner_margin(egui::Margin::same(16.0))
+                .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        if file_index == 0 {
-                            ui.add_sized(
-                                [64.0, 24.0],
-                                egui::Label::new(
-                                    egui::RichText::new(tr_format(
-                                        language,
-                                        format!("{} 保留", file_path.disk_id),
-                                        format!("{} Keep", file_path.disk_id),
-                                    ))
-                                    .color(p.green),
+                        ui.label(
+                            egui::RichText::new(tr_format(
+                                language,
+                                format!("重复组 {}", group_index + 1),
+                                format!("Group {}", group_index + 1),
+                            ))
+                            .strong()
+                            .color(p.text),
+                        );
+                        ui.separator();
+                        ui.label(egui::RichText::new(format_bytes(group.size)).color(p.blue));
+                        ui.label(
+                            egui::RichText::new(format_count(
+                                group.files.len(),
+                                language,
+                                "个文件",
+                                "files",
+                            ))
+                            .color(p.muted),
+                        );
+                        ui.label(
+                            egui::RichText::new(tr_format(
+                                language,
+                                format!(
+                                    "可释放 {}",
+                                    format_bytes(group.size * (group.files.len() - 1) as u64)
                                 ),
-                            );
-                        } else {
-                            let key = file_key(file_path);
-                            let mut selected =
-                                self.selected_files.get(&key).copied().unwrap_or(false);
+                                format!(
+                                    "Save {}",
+                                    format_bytes(group.size * (group.files.len() - 1) as u64)
+                                ),
+                            ))
+                            .color(p.green),
+                        );
+
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             if ui
-                                .checkbox(&mut selected, tr(language, "删除", "Delete"))
-                                .changed()
-                            {
-                                selection_updates.push((key, selected));
-                            }
-                        }
-
-                        let path_width = (ui.available_width() - 72.0).max(0.0);
-                        ui.add_sized(
-                            [path_width, 24.0],
-                            egui::Label::new(
-                                egui::RichText::new(format!(
-                                    "[{}] {}",
-                                    file_path.disk_id,
-                                    shorten_path(&file_path.path, 88)
+                                .add_sized(
+                                    [96.0, 26.0],
+                                    secondary_button(tr(language, "本次忽略", "Ignore"), p),
+                                )
+                                .on_hover_text(tr(
+                                    language,
+                                    "本轮隐藏该重复组，不参与选择和删除",
+                                    "Hide this group for this run; it will not be selected or deleted",
                                 ))
-                                .size(12.0)
-                                .color(p.text),
-                            )
-                            .truncate()
-                            .sense(egui::Sense::hover()),
-                        )
-                        .on_hover_text(format!(
-                            "{}: {}\n{}",
-                            tr(language, "磁盘", "Disk"),
-                            file_path.disk_id,
-                            file_path.path
-                        ));
-
-                        if ui
-                            .add_sized(
-                                [62.0, 24.0],
-                                secondary_button(tr(language, "定位", "Reveal"), p),
-                            )
-                            .clicked()
-                        {
-                            files_to_reveal.push(file_path.path.clone());
-                        }
+                                .clicked()
+                            {
+                                ignored_groups.push(group_key(group));
+                            }
+                        });
                     });
-                }
-            });
+
+                    ui.add_space(8.0);
+
+                    for (file_index, file_path) in group.files.iter().enumerate() {
+                        ui.push_id(("duplicate_file", file_key(file_path)), |ui| {
+                            ui.horizontal(|ui| {
+                                if file_index == 0 {
+                                    ui.add_sized(
+                                        [64.0, 24.0],
+                                        egui::Label::new(
+                                            egui::RichText::new(tr_format(
+                                                language,
+                                                format!("{} 保留", file_path.disk_id),
+                                                format!("{} Keep", file_path.disk_id),
+                                            ))
+                                            .color(p.green),
+                                        ),
+                                    );
+                                } else {
+                                    let key = file_key(file_path);
+                                    let mut selected =
+                                        self.selected_files.get(&key).copied().unwrap_or(false);
+                                    if ui
+                                        .checkbox(&mut selected, tr(language, "删除", "Delete"))
+                                        .changed()
+                                    {
+                                        selection_updates.push((key, selected));
+                                    }
+                                }
+
+                                let path_width = (ui.available_width() - 72.0).max(0.0);
+                                ui.add_sized(
+                                    [path_width, 24.0],
+                                    egui::Label::new(
+                                        egui::RichText::new(format!(
+                                            "[{}] {}",
+                                            file_path.disk_id,
+                                            shorten_path(&file_path.path, 88)
+                                        ))
+                                        .size(12.0)
+                                        .color(p.text),
+                                    )
+                                    .truncate()
+                                    .sense(egui::Sense::hover()),
+                                )
+                                .on_hover_text(format!(
+                                    "{}: {}\n{}",
+                                    tr(language, "磁盘", "Disk"),
+                                    file_path.disk_id,
+                                    file_path.path
+                                ));
+
+                                if ui
+                                    .add_sized(
+                                        [62.0, 24.0],
+                                        secondary_button(tr(language, "定位", "Reveal"), p),
+                                    )
+                                    .clicked()
+                                {
+                                    files_to_reveal.push(file_path.path.clone());
+                                }
+                            });
+                        });
+                    }
+                });
+        });
     }
 
     fn duplicate_size_filter_control(&mut self, ui: &mut egui::Ui, p: Palette) {
@@ -1476,78 +1551,80 @@ impl DuplicateFinderApp {
 
         let disks = self.disk_summaries.clone();
         for disk in disks {
-            egui::Frame::none()
-                .fill(p.surface)
-                .stroke(egui::Stroke::new(1.0, p.border))
-                .rounding(egui::Rounding::same(8.0))
-                .inner_margin(egui::Margin::symmetric(12.0, 10.0))
-                .show(ui, |ui| {
-                    ui.label(
-                        egui::RichText::new(&disk.disk_id)
-                            .strong()
-                            .color(p.text)
-                            .size(13.0),
-                    );
-                    ui.add_space(3.0);
-                    ui.label(
-                        egui::RichText::new(tr_format(
+            ui.push_id(("disk_index_card", &disk.disk_id), |ui| {
+                egui::Frame::none()
+                    .fill(p.surface)
+                    .stroke(egui::Stroke::new(1.0, p.border))
+                    .rounding(egui::Rounding::same(8.0))
+                    .inner_margin(egui::Margin::symmetric(12.0, 10.0))
+                    .show(ui, |ui| {
+                        ui.label(
+                            egui::RichText::new(&disk.disk_id)
+                                .strong()
+                                .color(p.text)
+                                .size(13.0),
+                        );
+                        ui.add_space(3.0);
+                        ui.label(
+                            egui::RichText::new(tr_format(
+                                language,
+                                format!(
+                                    "{} 个文件 · {}",
+                                    disk.file_count,
+                                    format_bytes(disk.total_size.max(0) as u64)
+                                ),
+                                format!(
+                                    "{} files · {}",
+                                    disk.file_count,
+                                    format_bytes(disk.total_size.max(0) as u64)
+                                ),
+                            ))
+                            .color(p.muted)
+                            .size(12.0),
+                        )
+                        .on_hover_text(tr_format(
                             language,
                             format!(
-                                "{} 个文件 · {}",
-                                disk.file_count,
-                                format_bytes(disk.total_size.max(0) as u64)
+                                "路径：{}\n最后扫描：{}",
+                                disk.root_path, disk.last_scanned_at
                             ),
                             format!(
-                                "{} files · {}",
-                                disk.file_count,
-                                format_bytes(disk.total_size.max(0) as u64)
+                                "Path: {}\nLast scanned: {}",
+                                disk.root_path, disk.last_scanned_at
                             ),
-                        ))
-                        .color(p.muted)
-                        .size(12.0),
-                    )
-                    .on_hover_text(tr_format(
-                        language,
-                        format!(
-                            "路径：{}\n最后扫描：{}",
-                            disk.root_path, disk.last_scanned_at
-                        ),
-                        format!(
-                            "Path: {}\nLast scanned: {}",
-                            disk.root_path, disk.last_scanned_at
-                        ),
-                    ));
-                    ui.add_space(6.0);
-                    ui.horizontal(|ui| {
-                        if ui
-                            .add_sized(
-                                [52.0, 26.0],
-                                secondary_button(tr(language, "查看", "View"), p),
-                            )
-                            .clicked()
-                        {
-                            self.load_disk_files(&disk.disk_id);
-                        }
-                        if ui
-                            .add_sized(
-                                [62.0, 26.0],
-                                secondary_button(tr(language, "重扫", "Rescan"), p),
-                            )
-                            .clicked()
-                        {
-                            self.rescan_disk(&disk);
-                        }
-                        if ui
-                            .add_sized(
-                                [62.0, 26.0],
-                                secondary_button(tr(language, "移除", "Remove"), p),
-                            )
-                            .clicked()
-                        {
-                            self.clear_disk_index(&disk.disk_id);
-                        }
+                        ));
+                        ui.add_space(6.0);
+                        ui.horizontal(|ui| {
+                            if ui
+                                .add_sized(
+                                    [52.0, 26.0],
+                                    secondary_button(tr(language, "查看", "View"), p),
+                                )
+                                .clicked()
+                            {
+                                self.load_disk_files(&disk.disk_id);
+                            }
+                            if ui
+                                .add_sized(
+                                    [62.0, 26.0],
+                                    secondary_button(tr(language, "重扫", "Rescan"), p),
+                                )
+                                .clicked()
+                            {
+                                self.rescan_disk(&disk);
+                            }
+                            if ui
+                                .add_sized(
+                                    [62.0, 26.0],
+                                    secondary_button(tr(language, "移除", "Remove"), p),
+                                )
+                                .clicked()
+                            {
+                                self.clear_disk_index(&disk.disk_id);
+                            }
+                        });
                     });
-                });
+            });
             ui.add_space(6.0);
         }
     }
@@ -1601,7 +1678,7 @@ impl DuplicateFinderApp {
 
     fn quick_path_button(&mut self, ui: &mut egui::Ui, label: &str, folder: &str, p: Palette) {
         if ui
-            .add_sized([54.0, 24.0], secondary_button(label, p))
+            .add_sized([58.0, 26.0], secondary_button(label, p))
             .clicked()
         {
             if let Some(home) = dirs::home_dir() {
